@@ -2,6 +2,7 @@ import { pipe } from "fp-ts/function";
 import * as TE from "fp-ts/TaskEither";
 import ky, { HTTPError, type Options as KyOptions } from "ky";
 import { z, ZodError } from "zod";
+import { generateCacheKey, useDataStore } from "./cache";
 import { ApiError, BaseApiError, ErrorKeys } from "./errors";
 import { HttpMethod, RequestOptions } from "./types";
 
@@ -37,13 +38,12 @@ const handleError = (error: unknown): BaseApiError => {
       ["HTTP request failed"],
       error.response.status
     );
-  } else {
-    return ApiError(
-      ErrorKeys.INTERNAL_ERROR,
-      [error instanceof Error ? error.message : "An unexpected error occurred"],
-      500
-    );
   }
+  return ApiError(
+    ErrorKeys.INTERNAL_ERROR,
+    [error instanceof Error ? error.message : "An unexpected error occurred"],
+    500
+  );
 };
 
 export const createApiClient = (
@@ -68,13 +68,12 @@ export const createApiClient = (
     ...defaultOptions,
   });
 
-  const request = <T>(
+  const makeRequest = (
     method: HttpMethod,
     url: string,
-    schema: z.ZodType<T>,
     options?: RequestOptions
-  ): TE.TaskEither<BaseApiError, T> => {
-    const makeRequest = (): Promise<Response> => {
+  ): TE.TaskEither<BaseApiError, Response> => {
+    return TE.tryCatch(() => {
       switch (method) {
         case "get":
           return api.get(url, {
@@ -95,19 +94,40 @@ export const createApiClient = (
         default:
           throw new Error(`Unsupported HTTP method: ${method}`);
       }
-    };
+    }, handleError);
+  };
 
-    return pipe(
-      TE.tryCatch(makeRequest, (error) => handleError(error)),
-      TE.flatMap((response) => jsonParseTE(response, schema)),
-      TE.tap((data) =>
-        TE.fromIO(() =>
-          console.log(
-            `${method.toUpperCase()} ${url} successful: ${JSON.stringify(data)}`
+  const request = <T>(
+    method: HttpMethod,
+    url: string,
+    schema: z.ZodType<T>,
+    options?: RequestOptions & {
+      noCache?: boolean;
+      ttl?: number;
+    }
+  ): TE.TaskEither<BaseApiError, T> => {
+    const fetcher = () =>
+      pipe(
+        makeRequest(method, url, options),
+        TE.chain((response) => jsonParseTE(response, schema)),
+        TE.tap((data) =>
+          TE.fromIO(() =>
+            console.log(
+              `${method.toUpperCase()} ${url} successful: ${JSON.stringify(
+                data
+              )}`
+            )
           )
         )
-      )
-    );
+      );
+
+    // GETリクエストのみキャッシュを使用
+    if (method === "get" && !options?.noCache) {
+      const key = generateCacheKey(url, options?.params);
+      return useDataStore.getState().fetchData(fetcher, key, options);
+    }
+
+    return fetcher();
   };
 
   return {

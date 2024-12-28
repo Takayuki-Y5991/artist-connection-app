@@ -4,7 +4,6 @@ import { create } from "zustand";
 import { BaseApiError } from "./errors";
 import { RequestOptions } from "./types";
 
-// キャッシュの型
 type CacheData<T> = {
   data: T;
   fetchedAt: number;
@@ -14,10 +13,8 @@ type CacheState = {
   [key: string]: CacheData<unknown> | undefined;
 };
 
-// キャッシュの有効期限 (例: 60秒)
-const CACHE_TTL = 60 * 1000;
+const DEFAULT_CACHE_TTL = 60 * 1000;
 
-// キー生成関数
 export const generateCacheKey = (
   url: string,
   params?: Record<string, unknown>
@@ -29,100 +26,68 @@ export const generateCacheKey = (
   return `${url}?${queryString}`;
 };
 
-// Zustand store
 type DataStore = {
   cache: CacheState;
-  isLoading: boolean;
-  error: BaseApiError | null;
   fetchData: <T>(
     fetcher: (options?: RequestOptions) => TE.TaskEither<BaseApiError, T>,
     key: string,
-    options?: RequestOptions,
-    config?: { ttl?: number }
+    options?: RequestOptions & { ttl?: number }
   ) => TE.TaskEither<BaseApiError, T>;
-  revalidate: (key: string) => TE.TaskEither<never, void>;
+  invalidateCache: (key: string) => void;
+  clearCache: () => void;
 };
 
 export const useDataStore = create<DataStore>((set, get) => ({
   cache: {},
-  isLoading: false,
-  error: null,
+
   fetchData: <T>(
     fetcher: (options?: RequestOptions) => TE.TaskEither<BaseApiError, T>,
     key: string,
-    options?: RequestOptions,
-    config?: { ttl?: number }
-  ) =>
-    pipe(
-      TE.Do,
-      TE.bind("cache", () => TE.of(get().cache)),
-      TE.let("currentCache", ({ cache }) => cache[key]),
-      TE.let("ttl", () => config?.ttl ?? CACHE_TTL),
-      TE.let(
-        "isCacheValid",
-        ({ currentCache, ttl }) =>
-          !!currentCache && Date.now() - currentCache.fetchedAt < ttl
-      ),
-      TE.chain(({ isCacheValid, currentCache }) =>
-        isCacheValid
-          ? TE.right(currentCache?.data as T) // キャッシュが有効な場合は、キャッシュからデータを返す
-          : pipe(
-              // キャッシュがないか古い場合は、データを取得する
-              TE.of(undefined),
-              TE.tap(() =>
-                currentCache
-                  ? TE.of(
-                      set((state) => ({
-                        cache: { ...state.cache, [key]: currentCache },
-                      }))
-                    )
-                  : TE.of(set({ isLoading: true }))
-              ),
-              TE.chain(() => fetcher(options)),
-              TE.map((data) => {
-                const newCacheData: CacheData<T> = {
-                  data,
-                  fetchedAt: Date.now(),
-                };
-                set((state) => ({
-                  cache: { ...state.cache, [key]: newCacheData },
-                  isLoading: false,
-                  error: null,
-                }));
-                return data; // データを返す
-              })
-            )
-      ),
-      TE.tapError((error) =>
-        TE.fromIO(() => {
-          set({ error, isLoading: false });
-        })
-      )
-    ),
-  revalidate: (key: string) =>
-    pipe(
-      TE.of(undefined),
-      TE.chain(() =>
-        TE.fromIO(() => {
-          const { cache } = get();
-          const currentCache = cache[key];
-          if (currentCache) {
-            set((state) => ({
-              cache: { ...state.cache, [key]: undefined },
-            }));
-          }
-        })
-      )
-    ),
+    options?: RequestOptions & { ttl?: number }
+  ) => {
+    const { cache } = get();
+    const cachedData = cache[key] as CacheData<T> | undefined;
+    const ttl = options?.ttl ?? DEFAULT_CACHE_TTL;
+
+    const isCacheValid = cachedData && Date.now() - cachedData.fetchedAt < ttl;
+
+    if (isCacheValid) {
+      return TE.right(cachedData.data);
+    }
+
+    return pipe(
+      fetcher(options),
+      TE.map((data) => {
+        set((state) => ({
+          cache: {
+            ...state.cache,
+            [key]: { data, fetchedAt: Date.now() },
+          },
+        }));
+        return data;
+      })
+    );
+  },
+
+  invalidateCache: (key: string) => {
+    set((state) => ({
+      cache: {
+        ...state.cache,
+        [key]: undefined,
+      },
+    }));
+  },
+
+  clearCache: () => {
+    set({ cache: {} });
+  },
 }));
 
-// fetchDataをラップする関数
 export const fetchDataWrapper = <T>(
   fetcher: (options?: RequestOptions) => TE.TaskEither<BaseApiError, T>,
   url: string,
-  options?: RequestOptions,
-  config?: { ttl?: number }
+  options?: RequestOptions & { ttl?: number }
 ): TE.TaskEither<BaseApiError, T> => {
   const key = generateCacheKey(url, options?.params);
-  return useDataStore.getState().fetchData(fetcher, key, options, config);
+  return useDataStore.getState().fetchData(fetcher, key, options);
 };
