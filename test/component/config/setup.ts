@@ -1,13 +1,10 @@
-import { server } from "@test/component/mocks/server";
-import "@testing-library/jest-dom";
 import { cleanup } from "@testing-library/react";
-import { afterAll, afterEach, beforeAll } from "vitest";
+import { afterEach } from "vitest";
 
-beforeAll(() => {
-  server.listen({ onUnhandledRequest: "warn" });
-});
 afterEach(() => {
   cleanup();
-  server.resetHandlers();
+  localStorage.clear();
+  sessionStorage.clear();
 });
-afterAll(() => server.close());
+
+global.fetch = vi.fn();

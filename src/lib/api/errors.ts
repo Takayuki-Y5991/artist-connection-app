@@ -38,5 +38,4 @@ const getErrorKeyFromStatus = (status: number): ErrorKey => {
   }
 };
 
-export { ErrorKeys };
 export type { BaseApiError, ErrorDetail, ErrorKey };
