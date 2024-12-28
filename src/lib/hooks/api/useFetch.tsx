@@ -11,7 +11,7 @@ type UseFetchOptions = RequestOptions & {
   enabled?: boolean;
 };
 
-export const useFetch = <T>(
+export const useFetch = <T,>(
   url: string,
   schema: z.ZodType<T>,
   options?: UseFetchOptions

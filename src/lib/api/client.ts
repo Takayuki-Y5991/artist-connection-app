@@ -109,16 +109,7 @@ export const createApiClient = (
     const fetcher = () =>
       pipe(
         makeRequest(method, url, options),
-        TE.chain((response) => jsonParseTE(response, schema)),
-        TE.tap((data) =>
-          TE.fromIO(() =>
-            console.log(
-              `${method.toUpperCase()} ${url} successful: ${JSON.stringify(
-                data
-              )}`
-            )
-          )
-        )
+        TE.chain((response) => jsonParseTE(response, schema))
       );
 
     // GETリクエストのみキャッシュを使用

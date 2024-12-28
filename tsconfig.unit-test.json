@@ -1,0 +1,21 @@
+{
+    "compilerOptions": {
+      "composite": true,
+      "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.unit-test.tsbuildinfo",
+      "target": "ES2020",
+      "module": "ESNext",
+      "moduleResolution": "bundler",
+      "types": [
+        "bun-types"  // Bun用の型定義
+      ],
+      "baseUrl": ".",
+      "paths": {
+        "@/*": ["./src/*"],
+        "@test/*": ["./test/*"]
+      }
+    },
+    "include": [
+      "test/unit",
+      "src/**/*.ts"
+    ]
+  }
