@@ -5,9 +5,7 @@ import * as TE from "fp-ts/TaskEither";
 import { pipe } from "fp-ts/function";
 import { useCallback, useState } from "react";
 
-export const apiClient = createApiClient(
-  "https://jsonplaceholder.typicode.com"
-);
+export const apiClient = createApiClient(import.meta.env.VITE_API_BASE_URL);
 
 export type ApiState<T> = {
   data: T | undefined;

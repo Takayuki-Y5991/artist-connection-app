@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "vitest:test": "vitest",
     "shadcn:install": "bunx --bun shadcn@latest add "
   },
   "dependencies": {
