@@ -3,8 +3,8 @@ import * as TE from "fp-ts/TaskEither";
 import ky, { HTTPError, type Options as KyOptions } from "ky";
 import { z, ZodError } from "zod";
 import { generateCacheKey, useDataStore } from "./cache";
-import { ApiError, BaseApiError, ErrorKeys } from "./errors";
-import { HttpMethod, RequestOptions } from "./types";
+import { ApiError, BaseApiError } from "./errors";
+import { ErrorKeys, HttpMethod, RequestOptions } from "./types";
 
 const jsonParseTE = <T>(
   response: Response,

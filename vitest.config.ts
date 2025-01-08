@@ -14,6 +14,11 @@ export default defineConfig({
       include: ["src/lib/hooks/**/*.{ts,tsx}"],
       exclude: ["node_modules/", "test/"],
     },
+    poolOptions: {
+      threads: {
+        singleThread: true,
+      },
+    },
     env: {
       VITE_API_BASE_URL: "https://api.example.com",
     },

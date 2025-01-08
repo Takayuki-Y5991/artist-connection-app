@@ -1,6 +1,6 @@
 import { generateCacheKey, useDataStore } from "@/lib/api/cache";
 import { RequestOptions } from "@/lib/api/types";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { z } from "zod";
 import { apiClient, useApi } from "./useApi";
 
@@ -19,6 +19,7 @@ export const useFetch = <T,>(
   const { cache } = useDataStore();
   const key = generateCacheKey(url, options?.params);
   const cachedData = cache[key]?.data as T | undefined;
+  const isInitialMount = useRef(true);
 
   const {
     data,
@@ -28,18 +29,21 @@ export const useFetch = <T,>(
   } = useApi(() => apiClient.request("get", url, schema, options), cachedData);
 
   useEffect(() => {
-    if (options?.enabled !== false && (!data || options?.revalidate)) {
+    if (options?.enabled === false) return;
+
+    if (isInitialMount.current || options?.revalidate) {
+      isInitialMount.current = false;
       fetchData();
     }
-  }, [url, data, fetchData, options?.enabled, options?.revalidate]);
+  }, [url, fetchData, options?.enabled, options?.revalidate]);
 
   const refetch = useCallback(() => {
-    fetchData();
+    return fetchData();
   }, [fetchData]);
 
-  const invalidateCache = useCallback(() => {
+  const invalidateCache = useCallback(async () => {
     useDataStore.getState().invalidateCache(key);
-    refetch();
+    await refetch();
   }, [key, refetch]);
 
   return {

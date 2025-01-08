@@ -1,158 +1,214 @@
-// import { useDataStore } from "@/lib/api/cache";
-// import { BaseApiError, ErrorKeys } from "@/lib/api/types";
-// import { useApi } from "@/lib/hooks/api/useApi";
-// import { act, renderHook, waitFor } from "@testing-library/react";
-// import { beforeEach, describe, expect, it, vi } from "vitest";
-// import { z } from "zod";
-// import { useFetch } from "./useFetch";
+import { useDataStore } from "@/lib/api/cache";
+import { BaseApiError, ErrorKeys } from "@/lib/api/types";
+import { useApi } from "@/lib/hooks/api/useApi";
+import { useFetch } from "@/lib/hooks/api/useFetch";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import { z } from "zod";
 
-// // Mock the API client
-// vi.mock("./useApi", () => ({
-//   apiClient: {
-//     request: vi.fn(),
-//   },
-//   useApi: vi.fn(),
-// }));
+// モックの設定
+vi.mock("@/lib/hooks/api/useApi", () => ({
+  apiClient: {
+    request: vi.fn(),
+  },
+  useApi: vi.fn().mockReturnValue({
+    data: undefined,
+    isLoading: false,
+    error: null,
+    execute: vi.fn(),
+  }),
+}));
 
-// describe("useFetch", () => {
-//   const testUrl = "/api/test";
-//   const testSchema = z.object({
-//     id: z.number(),
-//     name: z.string(),
-//   });
+const defaultMockApi = {
+  data: undefined,
+  isLoading: false,
+  error: null,
+  execute: vi.fn(),
+};
 
-//   const mockData = { id: 1, name: "Test Data" };
-//   const mockError: BaseApiError = {
-//     _tag: "ApiError",
-//     key: ErrorKeys.NETWORK_ERROR,
-//     messages: ["Network Error"],
-//     status: 500,
-//   };
+describe("useFetch", () => {
+  const testUrl = "/api/test";
+  const testSchema = z.object({
+    id: z.number(),
+    name: z.string(),
+  });
 
-//   beforeEach(() => {
-//     vi.clearAllMocks();
-//     // Clear cache
-//     useDataStore.getState().clearCache();
-//   });
+  const mockData = { id: 1, name: "Test Data" };
+  const mockError: BaseApiError = {
+    _tag: "ApiError" as const,
+    key: ErrorKeys.NETWORK_ERROR,
+    messages: ["Network Error"],
+    status: 500,
+  };
 
-//   it("should initialize with default state", () => {
-//     const { result } = renderHook(() => useFetch(testUrl, testSchema));
+  beforeEach(() => {
+    vi.clearAllMocks();
+    useDataStore.getState().clearCache();
+    vi.mocked(useApi).mockReturnValue(defaultMockApi);
+  });
 
-//     expect(result.current.data).toBeUndefined();
-//     expect(result.current.isLoading).toBe(false);
-//     expect(result.current.error).toBeNull();
-//   });
+  it("should initialize with default state", () => {
+    const { result } = renderHook(() => useFetch(testUrl, testSchema));
 
-//   it("should fetch data on mount when enabled", async () => {
-//     const mockExecute = vi.fn(() => Promise.resolve(mockData));
-//     vi.mocked(useApi).mockReturnValue({
-//       data: mockData,
-//       isLoading: false,
-//       error: null,
-//       execute: mockExecute,
-//     });
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
 
-//     renderHook(() => useFetch(testUrl, testSchema));
+  it("should fetch data on mount when enabled", async () => {
+    const mockExecute = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(mockData));
+    const mockApi = {
+      ...defaultMockApi,
+      data: undefined, // 初期値はundefined
+      execute: mockExecute,
+    };
+    vi.mocked(useApi).mockReturnValue(mockApi);
 
-//     await waitFor(() => {
-//       expect(mockExecute).toHaveBeenCalled();
-//     });
-//   });
+    renderHook(() => useFetch(testUrl, testSchema));
 
-//   it("should not fetch data when enabled is false", () => {
-//     const mockExecute = vi.fn();
-//     vi.mocked(useApi).mockReturnValue({
-//       data: undefined,
-//       isLoading: false,
-//       error: null,
-//       execute: mockExecute,
-//     });
+    await waitFor(
+      () => {
+        expect(mockExecute).toHaveBeenCalled();
+      },
+      { timeout: 3000 }
+    );
+  });
 
-//     renderHook(() => useFetch(testUrl, testSchema, { enabled: false }));
+  it("should not fetch data when enabled is false", () => {
+    const mockExecute = vi.fn().mockResolvedValue(mockData);
+    vi.mocked(useApi).mockReturnValue({
+      ...defaultMockApi,
+      data: undefined,
+      execute: mockExecute,
+    });
 
-//     expect(mockExecute).not.toHaveBeenCalled();
-//   });
+    renderHook(() => useFetch(testUrl, testSchema, { enabled: false }));
 
-//   it("should use cached data when available", () => {
-//     const cachedData = { id: 2, name: "Cached Data" };
-//     useDataStore.getState().setCache("/api/test", cachedData);
+    expect(mockExecute).not.toHaveBeenCalled();
+  });
 
-//     const { result } = renderHook(() => useFetch(testUrl, testSchema));
+  it("should use cached data when available", () => {
+    const cachedData = { id: 2, name: "Cached Data" };
+    useDataStore.setState({
+      cache: {
+        [testUrl]: { data: cachedData, fetchedAt: Date.now() },
+      },
+    });
 
-//     expect(result.current.data).toEqual(cachedData);
-//   });
+    const mockExecute = vi.fn().mockResolvedValue(mockData);
+    vi.mocked(useApi).mockReturnValue({
+      ...defaultMockApi,
+      data: cachedData,
+      execute: mockExecute,
+    });
 
-//   it("should revalidate when revalidate option is true", async () => {
-//     const cachedData = { id: 2, name: "Cached Data" };
-//     useDataStore.getState().setCache("/api/test", cachedData);
+    const { result } = renderHook(() => useFetch(testUrl, testSchema));
 
-//     const mockExecute = vi.fn(() => Promise.resolve(mockData));
-//     vi.mocked(useApi).mockReturnValue({
-//       data: mockData,
-//       isLoading: false,
-//       error: null,
-//       execute: mockExecute,
-//     });
+    expect(result.current.data).toEqual(cachedData);
+  });
 
-//     renderHook(() => useFetch(testUrl, testSchema, { revalidate: true }));
+  it("should revalidate when revalidate option is true", async () => {
+    const cachedData = { id: 2, name: "Cached Data" };
+    useDataStore.setState({
+      cache: {
+        [testUrl]: { data: cachedData, fetchedAt: Date.now() },
+      },
+    });
 
-//     await waitFor(() => {
-//       expect(mockExecute).toHaveBeenCalled();
-//     });
-//   });
+    const mockExecute = vi.fn().mockResolvedValue(mockData);
+    vi.mocked(useApi).mockReturnValue({
+      ...defaultMockApi,
+      data: mockData,
+      execute: mockExecute,
+    });
 
-//   it("should refetch data when refetch is called", async () => {
-//     const mockExecute = vi.fn(() => Promise.resolve(mockData));
-//     vi.mocked(useApi).mockReturnValue({
-//       data: mockData,
-//       isLoading: false,
-//       error: null,
-//       execute: mockExecute,
-//     });
+    renderHook(() => useFetch(testUrl, testSchema, { revalidate: true }));
 
-//     const { result } = renderHook(() => useFetch(testUrl, testSchema));
+    expect(mockExecute).toHaveBeenCalledTimes(1);
+  });
 
-//     await act(async () => {
-//       result.current.refetch();
-//     });
+  it("should refetch data when refetch is called", async () => {
+    const mockExecute = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(mockData));
+    const mockApi = {
+      ...defaultMockApi,
+      data: undefined,
+      execute: mockExecute,
+    };
+    vi.mocked(useApi).mockReturnValue(mockApi);
 
-//     expect(mockExecute).toHaveBeenCalledTimes(2); // Initial fetch + refetch
-//   });
+    const { result } = renderHook(() => useFetch(testUrl, testSchema));
 
-//   it("should invalidate cache when invalidateCache is called", async () => {
-//     const cachedData = { id: 2, name: "Cached Data" };
-//     useDataStore.getState().setCache("/api/test", cachedData);
+    // 初期フェッチの実行を待つ
+    await waitFor(
+      () => {
+        expect(mockExecute).toHaveBeenCalled();
+      },
+      { timeout: 3000 }
+    );
 
-//     const mockExecute = vi.fn(() => Promise.resolve(mockData));
-//     vi.mocked(useApi).mockReturnValue({
-//       data: mockData,
-//       isLoading: false,
-//       error: null,
-//       execute: mockExecute,
-//     });
+    // refetchを実行
+    await act(async () => {
+      await result.current.refetch();
+    });
 
-//     const { result } = renderHook(() => useFetch(testUrl, testSchema));
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+  });
 
-//     await act(async () => {
-//       result.current.invalidateCache();
-//     });
+  it("should invalidate cache when invalidateCache is called", async () => {
+    const cachedData = { id: 2, name: "Cached Data" };
+    useDataStore.setState({
+      cache: {
+        [testUrl]: { data: cachedData, fetchedAt: Date.now() },
+      },
+    });
 
-//     expect(useDataStore.getState().cache["/api/test"]).toBeUndefined();
-//     expect(mockExecute).toHaveBeenCalled();
-//   });
+    const mockExecute = vi
+      .fn()
+      .mockImplementation(() => Promise.resolve(mockData));
+    const mockApi = {
+      ...defaultMockApi,
+      data: cachedData,
+      execute: mockExecute,
+    };
+    vi.mocked(useApi).mockReturnValue(mockApi);
 
-//   it("should handle error states", async () => {
-//     vi.mocked(useApi).mockReturnValue({
-//       data: undefined,
-//       isLoading: false,
-//       error: mockError,
-//       execute: vi.fn(() => Promise.reject(mockError)),
-//     });
+    const { result } = renderHook(() => useFetch(testUrl, testSchema));
 
-//     const { result } = renderHook(() => useFetch(testUrl, testSchema));
+    // 初期フェッチの実行を待つ
+    await waitFor(
+      () => {
+        expect(mockExecute).toHaveBeenCalled();
+      },
+      { timeout: 3000 }
+    );
 
-//     await waitFor(() => {
-//       expect(result.current.error).toEqual(mockError);
-//     });
-//   });
-// });
+    // キャッシュを無効化
+    await act(async () => {
+      await result.current.invalidateCache();
+    });
+
+    expect(useDataStore.getState().cache[testUrl]).toBeUndefined();
+    expect(mockExecute).toHaveBeenCalledTimes(2);
+  });
+
+  it("should handle error states", async () => {
+    const mockExecute = vi.fn().mockRejectedValue(mockError);
+    vi.mocked(useApi).mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      error: mockError,
+      execute: mockExecute,
+    });
+
+    const { result } = renderHook(() => useFetch(testUrl, testSchema));
+
+    await waitFor(() => {
+      expect(result.current.error).toEqual(mockError);
+      expect(result.current.data).toBeUndefined();
+    });
+  });
+});
