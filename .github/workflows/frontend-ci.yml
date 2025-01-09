@@ -1,0 +1,126 @@
+name: Frontend CI with Cache
+
+on:
+  push:
+    branches: [ develop ]
+  pull_request:
+    branches: [ develop ]
+  workflow_dispatch:
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Cache dependencies
+        id: bun-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
+      - name: Install Dependencies
+        if: steps.bun-cache.outputs.cache-hit != 'true'
+        run: bun install
+
+      # Add types for jest
+      - name: Install additional types
+        run: bun add -d @types/jest
+
+  type-check:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Restore dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+
+      - name: TypeScript Check
+        run: bunx tsc --noEmit
+
+  build:
+    needs: type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Restore dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+
+      # Skip tsc build and only run vite build
+      - name: Build
+        run: bunx vite build
+
+      - name: Upload Build
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-output
+          path: dist
+          retention-days: 1
+
+  vitest:
+    needs: [install, type-check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Restore dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+
+      - name: Download Build
+        uses: actions/download-artifact@v3
+        with:
+          name: build-output
+          path: dist
+
+      - name: Run Vitest
+        run: bun run vitest:test:coverage
+
+      - name: Upload Test Results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: vitest-results
+          path: coverage
+          retention-days: 2
