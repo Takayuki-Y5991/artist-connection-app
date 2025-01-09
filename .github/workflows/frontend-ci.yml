@@ -33,7 +33,11 @@ jobs:
         if: steps.bun-cache.outputs.cache-hit != 'true'
         run: bun install
 
-  build:
+      # Add types for jest
+      - name: Install additional types
+        run: bun add -d @types/jest
+
+  type-check:
     needs: install
     runs-on: ubuntu-latest
     steps:
@@ -52,8 +56,31 @@ jobs:
             ~/.bun/install/cache
           key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
 
+      - name: TypeScript Check
+        run: bunx tsc --noEmit
+
+  build:
+    needs: type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Restore dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            node_modules
+            ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lockb') }}
+
+      # Skip tsc build and only run vite build
       - name: Build
-        run: bun run build
+        run: bunx vite build
 
       - name: Upload Build
         uses: actions/upload-artifact@v3
@@ -63,7 +90,7 @@ jobs:
           retention-days: 1
 
   vitest:
-    needs: [install, build]
+    needs: [install, type-check]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
