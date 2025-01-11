@@ -1,0 +1,26 @@
+components:
+  schemas:
+    UserPreferences:
+      type: object
+      properties:
+        userType:
+          type: string
+          enum: [artist, client]
+          description: ユーザータイプ
+        notifications:
+          type: object
+          properties:
+            email:
+              type: boolean
+              description: メール通知の有効/無効
+            push:
+              type: boolean
+              description: プッシュ通知の有効/無効
+        theme:
+          type: string
+          enum: [light, dark, system]
+          description: UI テーマ設定
+        language:
+          type: string
+          description: 表示言語設定
+          example: ja

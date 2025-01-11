@@ -1,0 +1,34 @@
+components:
+  paths:
+    get:
+      summary: ユーザー設定取得
+      operationId: getUserPreferences
+      security:
+        - OAuth2: [read:profile]
+      responses:
+        '200':
+          description: ユーザー設定の取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '../../components/schemas/user/preferences.yaml#/components/schemas/UserPreferences'
+    put:
+      summary: ユーザー設定更新
+      operationId: updateUserPreferences
+      security:
+        - OAuth2: [write:profile]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '../../components/schemas/user/preferences.yaml#/components/schemas/UserPreferences'
+      responses:
+        '200':
+          description: 設定の更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '../../components/schemas/user/preferences.yaml#/components/schemas/UserPreferences'
+        '400':
+          $ref: '../../components/responses/errors.yaml#/components/responses/ValidationError'

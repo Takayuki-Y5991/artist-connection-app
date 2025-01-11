@@ -10,8 +10,9 @@
     "preview": "vite preview",
     "vitest:test": "vitest",
     "vitest:test:coverage": "vitest run --coverage",
-    "shadcn:install": "bunx --bun shadcn@latest add "
-  },
+    "shadcn:install": "bunx --bun shadcn@latest add ",
+    "redonly:create": "bunx --bun redocly build-docs openapi/openapi.yaml --output openapi/__generated/index.html"
+    },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
     "@radix-ui/react-label": "^2.1.1",
@@ -31,6 +32,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
+    "@redocly/cli": "^1.27.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@types/node": "^22.10.2",

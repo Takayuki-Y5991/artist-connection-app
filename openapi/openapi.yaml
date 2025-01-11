@@ -1,0 +1,37 @@
+openapi: 3.0.0
+
+info:
+  title: Creation Platform API
+  version: 1.0.0
+  description: |
+    Creation Platform API仕様
+    OAuth2.0による認証を使用し、リソースサーバーとしての役割を提供します。
+
+servers:
+  - url: http://localhost:8080/api/v1
+    description: 開発環境
+  - url: https://api.creation-platform.com/api/v1
+    description: 本番環境
+
+paths:
+  /user/me:
+    $ref: 'paths/user/me.yaml#/components/paths'
+  /user/me/preferences:
+    $ref: 'paths/user/preference.yaml#/components/paths'
+
+components:
+  schemas:
+    UserProfile:
+      $ref: 'components/schemas/user/profile.yaml#/components/schemas/UserProfile'
+    UserPreferences:
+      $ref: 'components/schemas/user/preferences.yaml#/components/schemas/UserPreferences'
+  responses:
+    Unauthorized:
+      $ref: 'components/responses/errors.yaml#/components/responses/Unauthorized'
+    Forbidden:
+      $ref: 'components/responses/errors.yaml#/components/responses/Forbidden'
+    ValidationError:
+      $ref: 'components/responses/errors.yaml#/components/responses/ValidationError'
+  securitySchemes:
+    OAuth2:
+      $ref: 'components/security/oauth2.yaml#/components/securitySchemes/OAuth2'

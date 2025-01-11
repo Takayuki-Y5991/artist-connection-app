@@ -1,0 +1,12 @@
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      flows:
+        authorizationCode:
+          authorizationUrl: ${AUTH_SERVER_URL}/oauth/authorize
+          tokenUrl: ${AUTH_SERVER_URL}/oauth/token
+          refreshUrl: ${AUTH_SERVER_URL}/oauth/refresh
+          scopes:
+            read:profile: ユーザープロフィールの読み取り
+            write:profile: ユーザープロフィールの更新
