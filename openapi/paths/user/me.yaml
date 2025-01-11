@@ -1,0 +1,18 @@
+components:
+  paths:
+    get:
+      summary: ユーザープロファイル取得
+      operationId: getCurrentUser
+      security:
+        - OAuth2: [read:profile]
+      responses:
+        '200':
+          description: ユーザープロファイルの取得成功
+          content:
+            application/json:
+              schema:
+                $ref: '../../components/schemas/user/profile.yaml#/components/schemas/UserProfile'
+        '401':
+          $ref: '../../components/responses/errors.yaml#/components/responses/Unauthorized'
+        '403':
+          $ref: '../../components/responses/errors.yaml#/components/responses/Forbidden'

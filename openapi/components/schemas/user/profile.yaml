@@ -1,0 +1,31 @@
+components:
+  schemas:
+    UserProfile:
+      type: object
+      required:
+        - id
+        - sub
+        - userType
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: システム内部のユーザーID
+        sub:
+          type: string
+          description: OAuth2.0のsubject identifier
+        email:
+          type: string
+          format: email
+          description: ユーザーのメールアドレス
+        name:
+          type: string
+          description: 表示名
+        userType:
+          type: string
+          enum: [artist, client]
+          description: ユーザータイプ
+        createdAt:
+          type: string
+          format: date-time
+          description: アカウント作成日時

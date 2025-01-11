@@ -1,0 +1,51 @@
+components:
+  responses:
+    Unauthorized:
+      description: 認証エラー
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                example: unauthorized
+              message:
+                type: string
+                example: Invalid or expired token
+
+    Forbidden:
+      description: 権限エラー
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                example: forbidden
+              message:
+                type: string
+                example: Insufficient scope
+
+    ValidationError:
+      description: バリデーションエラー
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              code:
+                type: string
+                example: validation_error
+              message:
+                type: string
+              errors:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    field:
+                      type: string
+                    message:
+                      type: string
